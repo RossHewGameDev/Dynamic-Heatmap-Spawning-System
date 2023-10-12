@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 672dccfe54fa3224d8876026f929f942
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - cellMapping: {instanceID: 0}
+  - plantPrefab: {fileID: 3545482450054476099, guid: 5729f074793844d4782ce4511f129e4c,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,16 @@
+{
+    "name": "SpawningSys",
+    "rootNamespace": "",
+    "references": [
+        "GUID:2fcdfb4ac5ea301439c4bdf878e7113d"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
