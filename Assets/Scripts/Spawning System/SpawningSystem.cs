@@ -19,6 +19,8 @@ public class SpawningSystem : MonoBehaviour
         Heatmap // enables Dynamic spawning system
     }
 
+    [SerializeField] public int minExplorationBeforeSpawning = 100; // minimum exploration required of map before spawning resources
+
     [SerializeField] public CellMapping cellMapping;
 
     [SerializeField] public int resourceNumber; // Spawning systems target resource amount
@@ -43,22 +45,19 @@ public class SpawningSystem : MonoBehaviour
     public List<Transform> staticPlants = new List<Transform>();
 
 
-    private List<Cell> cellsInVision = new List<Cell>();       // cells within the viewed heatmap.
-    private List<Cell> cellsOutsideVision = new List<Cell>(); // cells outside the viewed heatmap.
+    private List<Cell> cellsInExploredVision = new List<Cell>();       // cells within the viewed heatmap.
+    private List<Cell> cellsOutsideExploredVision = new List<Cell>(); // cells outside the viewed heatmap.
     private List<Cell> edgeOfVision = new List<Cell>();      // cells on the edge of the viewed heatmap.
     public List<Cell> plantsOnEdge = new List<Cell>();      // cells that contain plants on the edge of the viewed heatmap
 
     Coroutine spawningActive;
     int staticCellToSpawn = 0;
 
+
+
     private void Start()
     {
-        DiameterCalc(cellMapping.cellRadius); // getting diameter of cells 
-    }
-
-    public void DiameterCalc(float radius)
-    {
-        cellDiameter = radius * 2;
+        cellDiameter = cellMapping.mapCellDiameter;
     }
 
     void Update()
@@ -269,23 +268,23 @@ public class SpawningSystem : MonoBehaviour
         foreach (Cell cell in cellMapping.initSpawnableCellList)
         {
             //CELLS FOUND TO BE OUTSIDE VISION
-            if (cell.temprature < 0.1 && !cellsOutsideVision.Contains(cell))
+            if (cell.temprature < 0.1 && !cellsOutsideExploredVision.Contains(cell))
             {
-                cellsOutsideVision.Add(cell);
+                cellsOutsideExploredVision.Add(cell);
             }
             //CELLS FOUND TO BE IN VISION
-            if (cell.temprature > 0.1 && !cellsInVision.Contains(cell))
+            if (cell.temprature > 0.1 && !cellsInExploredVision.Contains(cell))
             {
-                cellsInVision.Add(cell);
+                cellsInExploredVision.Add(cell);
                 edgeOfVision.Remove(cell);
-                cellsOutsideVision.Remove(cell);
+                cellsOutsideExploredVision.Remove(cell);
             }
             //FOR EACH CELL WITHIN VISION
-            if (cellsInVision.Contains(cell))
+            if (cellsInExploredVision.Contains(cell))
             {   //FIND NEIGHBOURS THAT ARE ON THE EDGE
                 foreach (Cell neighbour in cellMapping.FindNeighbours(cell, 3))
                 {
-                    if (cellsOutsideVision.Contains(neighbour) && neighbour.temprature < 0.08f && !edgeOfVision.Contains(neighbour))
+                    if (cellsOutsideExploredVision.Contains(neighbour) && neighbour.temprature < 0.08f && !edgeOfVision.Contains(neighbour))
                     {
                         edgeOfVision.Add(neighbour);
                     }
@@ -297,13 +296,14 @@ public class SpawningSystem : MonoBehaviour
             }
         }
 
-        if (cellsInVision.Count > 100) // Wait until 100 cells have been explored
+        // If player has not explored enough, do not start the Spawning.
+        if (cellsInExploredVision.Count > minExplorationBeforeSpawning)
         {
             if (plantsOnEdge.Count < 4 && edgeOfVision.Count != 0) // limit the amount of plants that can spawn on the edge of exploration
             {
 
                 p_Spawn = edgeOfVision[Random.Range(0, edgeOfVision.Count)]; // find a cell on the edge of vision
-                Debug.LogError("Spawning on edge");
+                Debug.LogWarning("Spawning on edge");
 
                 UpdateSpawnableList(p_Spawn);
                 plantsOnEdge.Add(p_Spawn);
@@ -313,14 +313,10 @@ public class SpawningSystem : MonoBehaviour
             }
             else
             {
-                p_Spawn = cellsOutsideVision[Random.Range(0, cellsOutsideVision.Count)]; // find a cell that hasnt been explored yet
-                Debug.LogWarning("Spawning outside explored area");
+                p_Spawn = cellsOutsideExploredVision[Random.Range(0, cellsOutsideExploredVision.Count)]; // find a cell that hasnt been explored yet
+                Debug.Log("Spawning outside explored area");
                 UpdateSpawnableList(p_Spawn);
                 StartCoroutine(SpawnSolver(p_Spawn));
-
-
-
-
             }
         }
         else if (cellMapping.spawnableCellList.Count != 0)
@@ -345,7 +341,8 @@ public class SpawningSystem : MonoBehaviour
     public IEnumerator SpawnSolver(Cell p_Spawn)
     {
         yield return new WaitForFixedUpdate();
-        if (resourceCells.Count == 0) // the first resource cell is just random from the list.
+        // the first resource cell is just random from the list.
+        if (resourceCells.Count == 0) 
         {
             resourceCells.Add(p_Spawn);
             plantOnPoint(p_Spawn.worldPosition);
@@ -354,20 +351,64 @@ public class SpawningSystem : MonoBehaviour
         }
         else
         {
-            foreach (Cell cell in resourceCells) 
-            {
-                if (Vector3.Distance(p_Spawn.worldPosition, cell.worldPosition) < resourceGap && systemTypeRunning == SystemTypeRunning.Static)
-                { // prevents spawning of static plants on top of eachother 
 
-                    tooClose = true;
-                    spawningActive = null;
-                    spawn = null;
+            // if the plant is too close to other plants, choose another location to spawn
+            tooClose = false;
+            // switch statement for each of the systems: Static, Random, Heatmap
+            switch (systemTypeRunning)
+            {
+                case SystemTypeRunning.Static:
+                    foreach (Cell cell in resourceCells)
+                    {
+                        // prevents spawning of static plants on top of eachother 
+                        if (Vector3.Distance(p_Spawn.worldPosition, cell.worldPosition) < resourceGap)
+                        { 
+                            tooClose = true;
+                            spawningActive = null;
+                            spawn = null;
+                            break;
+                        }
+                        else
+                        {
+                            spawn = p_Spawn;
+                        }
+                    }
+                    
                     break;
-                }
-                else
-                {
-                    spawn = p_Spawn;
-                }
+                case SystemTypeRunning.Random:
+                    foreach (Cell cell in resourceCells)
+                    {
+                        // prevents spawning of plants on top of eachother 
+                        if (Vector3.Distance(p_Spawn.worldPosition, cell.worldPosition) < resourceGap)
+                        {
+                            tooClose = true;
+                            spawningActive = null;
+                            spawn = null;
+                            break;
+                        }
+                        else
+                        {
+                            spawn = p_Spawn;
+                        }
+                    }
+                    break;
+                case SystemTypeRunning.Heatmap:
+                    foreach (Cell cell in resourceCells)
+                    {
+                        // prevents spawning of plants on top of eachother 
+                        if (Vector3.Distance(p_Spawn.worldPosition, cell.worldPosition) < resourceGap)
+                        {
+                            tooClose = true;
+                            spawningActive = null;
+                            spawn = null;
+                            break;
+                        }
+                        else
+                        {
+                            spawn = p_Spawn;
+                        }
+                    }
+                    break;
             }
 
             if (spawn != null)
@@ -405,7 +446,7 @@ public class SpawningSystem : MonoBehaviour
             cell.spawnable = false;
             // temp
             edgeOfVision.Remove(cell);
-            cellsOutsideVision.Remove(cell);
+            cellsOutsideExploredVision.Remove(cell);
             // temp
             cellMapping.spawnableCellList.Remove(cell);
         }
@@ -432,7 +473,7 @@ public class SpawningSystem : MonoBehaviour
                 Gizmos.DrawCube(cell.worldPosition, new Vector3(cellDiameter, cellDiameter, cellDiameter));
             }
 
-            foreach (Cell cell in cellsOutsideVision) // Colour cells outside of the vision blue
+            foreach (Cell cell in cellsOutsideExploredVision) // Colour cells outside of the vision blue
             {
                 Gizmos.color = Color.blue;
                 Gizmos.DrawWireCube(cell.worldPosition, new Vector3(1f, 1f, 1f));

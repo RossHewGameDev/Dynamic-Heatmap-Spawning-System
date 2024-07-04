@@ -1,14 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 
-/// THIS SCRIPT HAS BEEN MODIFIED FROM COMP250 TO ACT AS AN ELEMENT IN MY DISSERTATION.
+/// THIS SCRIPT HAS BEEN MODIFIED FROM MY COMP250 ARTEFACT TO ACT AS AN ELEMENT IN MY DISSERTATION.
 /// Edited lines have been pointed out in comments and brand new functions will also be clearly labelled 
 /// 
 /// 
 /// 
-/// GIT LOG WILL SHOW CHANGES AT https://github.falmouth.ac.uk/Games-Academy-Student-Work-22-23/RH246018-Dissertation/commits/main
+/// GIT LOG WILL SHOW CHANGES AT https://github.falmouth.ac.uk/Games-Academy-Student-Work-22-23/RH*****8-Dissertation/commits/main *** OLD ***
 
 
 /// Resources read and watched (seperate from Academic refrences):  
@@ -28,36 +29,44 @@ public class CellMapping : MonoBehaviour
     public LayerMask spawnLayer;
     public Vector3 worldSize;   // size of the world that the map generates in
     public float cellRadius;   // radius of the cells that populate the map
+    public float mapCellDiameter { get { return cellDiameter; } set { cellDiameter = value; }} // diameter of the cells that populate the map
+
+    [Header("Collision Padding")]
     [SerializeField] float collisionPaddingSize;
+
+    [Header("Cell Map")]
     public Cell[,,] cellMap; // the overall map 
 
-    [SerializeField] public List<Cell> heatUpCellList = new List<Cell>(); /// DISSERTATION ADDITION
-    [SerializeField] public List<Cell> spawnableCellList = new List<Cell>(); /// DISSERTATION ADDITION
-    [SerializeField] public List<Cell> initSpawnableCellList = new List<Cell>(); /// DISSERTATION ADDITION
+    [Header("Cell Lists")]
+    [SerializeField] public List<Cell> heatUpCellList = new List<Cell>(); 
+    [SerializeField] public List<Cell> spawnableCellList = new List<Cell>(); 
+    [SerializeField] public List<Cell> initSpawnableCellList = new List<Cell>();
+    [SerializeField] private HashSet<Cell> initSpawnableCellHashSet = new HashSet<Cell>();
 
-
-    [SerializeField] bool showSpawnableArea; /// DISSERTATION ADDITION
-
-
-    [Header("Heatmap Adjustments")]         /// DISSERTATION ADDITION
-    [SerializeField] float heatNoiseGate;  /// DISSERTATION ADDITION
-    [SerializeField] float heatSpeed;     /// DISSERTATION ADDITION
-    [SerializeField] float coolSpeed;    /// DISSERTATION ADDITION
+    [Header("Heatmap Adjustments")]         
+    [SerializeField] float heatNoiseGate;  
+    [SerializeField] float heatSpeed;     
+    [SerializeField] float coolSpeed;    
 
     [Header("Spawning Settings")]
     [Tooltip("This changes the distance at which cells will disallow their neighbours to spawn plants")]
-    public int neighbourCheckDistance;      /// DISSERTATION ADDITION
+    public int neighbourCheckDistance;      
 
+    [Header("Debugging")]
+    [SerializeField] bool heatOnlySpawnableCells;
+    [SerializeField] bool showSpawnableArea; 
 
-    [HideInInspector]public List<Cell> path;     // the path that has been generated (inserted in here so we can debug it and see the gizmos draw the path)
+    [HideInInspector]public List<Cell> path; // the path that has been generated (inserted in here so we can debug it and see the gizmos draw the path)
 
-    private bool heatChkRunning;         /// DISSERTATION ADDITION
-    private Coroutine tempratureUpdate; /// DISSERTATION ADDITION
+    private bool globalheatChkRunning;        
+    private bool localheatChkRunning; 
+    private Coroutine globalTempratureUpdate; 
+    private Coroutine localTemperatureUpdate; 
 
-    float cellsExplored;     /// DISSERTATION ADDITION
-    float explorationValue; /// DISSERTATION ADDITION
-
-    private float cellDiameter;                 
+    float cellsExplored; // the number of cells that have been explored
+    float explorationValue; // the % of cells in the map that have been explored
+    private float cellDiameter;
+                  
     private int c_Width, c_Height, c_Length;  // cell number in width, height, length
     private Vector3 startPoint;              // the start point of the cell map
 
@@ -70,20 +79,7 @@ public class CellMapping : MonoBehaviour
         c_Length = (int)(worldSize.z / cellDiameter); // getting the number of cells in Length
         InitMap(); //Initilizing the cell map
 
-        GlobalSpawnableCellCheck();
-        ///ADDED FOR DISSERTATION
-        /*
-        randomCell = cellMap[Random.Range(0, 10), Random.Range(0, 10), Random.Range(0, 10)];
-
-        heatUpCellList.Add(randomCell); 
-        */
-        /*
-        foreach(Cell cell in FindNeighbours(randomCell))
-        {
-            heatUpCellList.Add(cell);
-        }  
-        */
-        ///ADDED FOR DISSERTATION
+        GlobalSpawnableCellCheck(); // checking which cells are spawnable on game start
     }
 
     /// <summary>
@@ -91,10 +87,13 @@ public class CellMapping : MonoBehaviour
     /// </summary>
     private void FixedUpdate()
     {
-        if (!heatChkRunning)
+        // if the heat check is not running, start the coroutine to update the temprature of the cells
+        if (!globalheatChkRunning)
         {
-            tempratureUpdate = StartCoroutine(TempratureUpdate());
+            globalTempratureUpdate = StartCoroutine(GlobalTempratureUpdate());
         }
+
+        // TODO: redo local heat check
     }
 
 
@@ -105,7 +104,7 @@ public class CellMapping : MonoBehaviour
     /// </summary>
     public void InitMap()
     {
-          // setting cell number and cellMap size (resolution)
+        // setting cell number and cellMap size (resolution)
         cellMap = new Cell[c_Width, c_Height , c_Length];
         // setting start point to where the bottom left of the grid would start generating from.
         startPoint = transform.position - (Vector3.right * worldSize.x * 0.5f) - (Vector3.up * worldSize.y * 0.5f) - (Vector3.forward * worldSize.z * 0.5f);
@@ -117,9 +116,9 @@ public class CellMapping : MonoBehaviour
             {
                 for (int z = 0; z < c_Length; z++)
                 {
-                        // we add the x y z components to each cell
+                    // we add the x y z components to each cell
                     Vector3 position = startPoint + Vector3.right * (x * cellDiameter + cellRadius) + Vector3.up * (y * cellDiameter + cellRadius) + Vector3.forward * (z * cellDiameter + cellRadius);
-                     // we then check to see if this cell is traversable (It used to be checking with the cell radius)
+                    // we then check to see if this cell is traversable
                     // checking with cell diameter means we see if theres an object anywhere near this cell
                     bool spawnable;
                     bool traversable = !Physics.CheckSphere(position, 1,untraversableMask);
@@ -138,6 +137,7 @@ public class CellMapping : MonoBehaviour
             }
         }
     }
+
     /// <summary>
     /// Grabs a cell location (vector3) in world space 
     /// Modified from Sebastian lagues tutorial (https://youtu.be/-L-WgKMFuhE)
@@ -198,21 +198,22 @@ public class CellMapping : MonoBehaviour
     {
         List<Cell> neighbours = new List<Cell>();
 
-        //loops through the cells that are 1 away from the target cell
         for(int x = -neighbourCheckDistance; x <= neighbourCheckDistance; x++)
         {
-            for (int y = -0; y <= 0; y++) // no height check
+            for (int y = -0; y <= 0; y++) // we ignore the y axis for now as we are working on a flat plane
             {
                 for (int z = -neighbourCheckDistance; z <= neighbourCheckDistance; z++)
                 {
-                    if (x == 0 && y == 0 && z == 0)
-                        continue;
+                    if (x == 0 && y == 0 && z == 0) // if the cell is the same as the one we are checking,
+                        continue;                   // skip this iteration
 
-                    int checkX = cell.gridX + x; // get the cells coordinates from the cell map
+                    // get the cells coordinates from the cell map
+                    int checkX = cell.gridX + x; 
                     int checkY = cell.gridY + y;
                     int checkZ = cell.gridZ + z;
 
-                    if (checkX >= 0 && checkX < c_Width)
+                    // if the cell is within the bounds of the cell map
+                    if (checkX >= 0 && checkX < c_Width) 
                     {
                         if (checkY >= 0 && checkY < c_Height)
                         {
@@ -230,57 +231,81 @@ public class CellMapping : MonoBehaviour
     }
 
     /// <summary>
-    /// Update the Temprature of a cell [ADDED WORK FOR DISSERTATION]
+    /// Update the Temprature of the cells in the cellmap
     /// </summary>
-    private IEnumerator TempratureUpdate()
+    private IEnumerator GlobalTempratureUpdate()
     {
-        heatChkRunning = true;
+        globalheatChkRunning = true;
         float alphaLimiter;
         float hotAlphaLimiter;
         alphaLimiter = 0.01f;
         hotAlphaLimiter = 0.7f;
-        foreach (Cell currentCell in cellMap)
+
+        foreach (Cell cell in cellMap)
         {
-            if(Physics.CheckSphere(currentCell.worldPosition, 1, visionCone))
+            // if we dont care about seeing non-spawnable cells heat up, skip them (this clears nice visuals for debugging)
+            if (!initSpawnableCellHashSet.Contains(cell) && heatOnlySpawnableCells) 
             {
-                if (currentCell.temprature < 1)
-                {
-                    currentCell.temprature += heatSpeed;
-                }
-                if (currentCell.temprature > hotAlphaLimiter)
-                {
-                    currentCell.colour = new Color(currentCell.temprature, 0, -currentCell.temprature, hotAlphaLimiter);
-                }
-                else
-                {
-                    currentCell.colour = new Color(currentCell.temprature, 0, -currentCell.temprature, currentCell.temprature);
-                }
-                
+                continue;        // with hashset filtering, we get 150~ fps on default map compared to 50~ fps without.
+            }
+
+            if(Physics.CheckSphere(cell.worldPosition, 1, visionCone))
+            {
+                HeatCell(hotAlphaLimiter, cell);
             }
             else
             {
-                if (currentCell.temprature > 0 && currentCell.temprature < heatNoiseGate)
-                {
-                    currentCell.temprature -= coolSpeed;
-                    if (currentCell.temprature < alphaLimiter)
-                    {
-                        currentCell.colour = new Color(currentCell.temprature, 0,Mathf.Lerp(-currentCell.temprature, currentCell.temprature, 0.01f), alphaLimiter);
-
-                    }
-                    else
-                    {
-                        currentCell.colour = new Color(currentCell.temprature, 0, Mathf.Lerp(-currentCell.temprature, currentCell.temprature,0.01f), currentCell.temprature);
-                    }
-                }
+                CoolCell(alphaLimiter, cell);
             }
         }
 
-
-
+        // wait for a short time before checking again
         yield return new WaitForSeconds(0.1f);
-        heatChkRunning = false;
-        StopCoroutine(tempratureUpdate);
+        globalheatChkRunning = false;
+        StopCoroutine(globalTempratureUpdate);
     }
+
+    /// <summary>
+    /// Heats the cell and sets the alpha of the cell to the temprature value
+    /// </summary>
+    private void HeatCell(float hotAlphaLimiter, Cell cell)
+    {
+        if (cell.temprature < 1)
+        {
+            cell.temprature += heatSpeed;
+        }
+
+        // If the cell is "over" hot, set the alpha to the hotAlphaLimiter
+        if (cell.temprature > hotAlphaLimiter)
+        {
+            cell.colour = new Color(cell.temprature, 0, -cell.temprature, hotAlphaLimiter);
+        }
+        else // else set the alpha to the reprasentative temprature
+        {
+            cell.colour = new Color(cell.temprature, 0, -cell.temprature, cell.temprature);
+        }
+    }
+
+    /// <summary>
+    /// Cools the cell and sets the alpha of the cell to the temprature value
+    /// </summary>
+    private void CoolCell(float alphaLimiter, Cell cell)
+    {
+        // if the cell is between 0 and the noise gate, cool the cell
+        if (cell.temprature > 0 && cell.temprature < heatNoiseGate)
+        {
+            cell.temprature -= coolSpeed;
+            if (cell.temprature < alphaLimiter)
+            {
+                cell.colour = new Color(cell.temprature, 0, Mathf.Lerp(-cell.temprature, cell.temprature, 0.01f), alphaLimiter);
+            }
+            else
+            {
+                cell.colour = new Color(cell.temprature, 0, Mathf.Lerp(-cell.temprature, cell.temprature, 0.01f), cell.temprature);
+            }
+        }
+    }
+    
     /// <summary>
     /// A check for the save system to grab the exploration value %.
     /// </summary>
@@ -288,7 +313,6 @@ public class CellMapping : MonoBehaviour
     public float explorationCheck()
     {
         cellsExplored = 0;
-
 
         foreach (Cell cell in initSpawnableCellList)
         {
@@ -299,7 +323,6 @@ public class CellMapping : MonoBehaviour
         }
 
         explorationValue = (cellsExplored / initSpawnableCellList.Count) * 100;
-        Debug.LogWarning(explorationValue);
         return explorationValue;
 
     }
@@ -324,7 +347,7 @@ public class CellMapping : MonoBehaviour
     }
 
     /// <summary>
-    /// Local spawn check for this script only when initilising the cellmap.
+    /// A global spawn checker for what cells are spawnable. Updates the spawnable cell list on initialisation.
     /// </summary>
     /// <param name="cells"></param>
     private void GlobalSpawnableCellCheck()
@@ -342,6 +365,8 @@ public class CellMapping : MonoBehaviour
                 initSpawnableCellList.Remove(cell);
             }
         }
+
+        initSpawnableCellHashSet = new HashSet<Cell>(initSpawnableCellList);
     }
 
 
