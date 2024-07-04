@@ -9,8 +9,8 @@ using UnityEngine;
 public class SpawningSystem : MonoBehaviour
 {
 
-    public int sizeOfEdgeList; // reports size of the list: Helps monitor performance of the script.
-    public int sizeOfList;    // reports size of the list: Helps monitor performance of the script.
+    public int sizeOfEdgeList; // reports size of the edgeOfVision list: Helps monitor performance of the script.
+    public int sizeOfList;    // reports size of the spawnableCellList: Helps monitor performance of the script.
 
     public enum SystemTypeRunning
     {
@@ -63,7 +63,7 @@ public class SpawningSystem : MonoBehaviour
     void Update()
     {
 
-        if (cellMapping.spawnableCellList.Count > sizeOfList)  // reports back the max size of the list to help watch for infinite lists
+        if (cellMapping.spawnableCellList.Count > sizeOfList)  // reports back the max size of the spawnableCellList to help watch for infinite lists
         {
             sizeOfList = cellMapping.spawnableCellList.Count;
         }
@@ -89,7 +89,6 @@ public class SpawningSystem : MonoBehaviour
     /// <returns></returns>
     private IEnumerator Populate()
     {
-
         if (systemTypeRunning == SystemTypeRunning.Static)
         {
             StartCoroutine(StaticSpawns());
@@ -105,9 +104,6 @@ public class SpawningSystem : MonoBehaviour
 
         yield return new WaitForFixedUpdate();
     }
-
-
-
 
     /// <summary>
     /// Calls GetRandomCell and creates a time delay for spawning. Limits amount of cells to be spawned to the resource number.
@@ -130,6 +126,7 @@ public class SpawningSystem : MonoBehaviour
         yield return new WaitForEndOfFrame();
         StopCoroutine(spawningActive);
     }
+    
     /// <summary>
     /// Updates the wait time delay for the random and dynamic systems
     /// </summary>
@@ -358,46 +355,13 @@ public class SpawningSystem : MonoBehaviour
             switch (systemTypeRunning)
             {
                 case SystemTypeRunning.Static:
+                case SystemTypeRunning.Random:      // TODO: implement different behaviour for different system types
+                case SystemTypeRunning.Heatmap:
                     foreach (Cell cell in resourceCells)
                     {
                         // prevents spawning of static plants on top of eachother 
                         if (Vector3.Distance(p_Spawn.worldPosition, cell.worldPosition) < resourceGap)
                         { 
-                            tooClose = true;
-                            spawningActive = null;
-                            spawn = null;
-                            break;
-                        }
-                        else
-                        {
-                            spawn = p_Spawn;
-                        }
-                    }
-                    
-                    break;
-                case SystemTypeRunning.Random:
-                    foreach (Cell cell in resourceCells)
-                    {
-                        // prevents spawning of plants on top of eachother 
-                        if (Vector3.Distance(p_Spawn.worldPosition, cell.worldPosition) < resourceGap)
-                        {
-                            tooClose = true;
-                            spawningActive = null;
-                            spawn = null;
-                            break;
-                        }
-                        else
-                        {
-                            spawn = p_Spawn;
-                        }
-                    }
-                    break;
-                case SystemTypeRunning.Heatmap:
-                    foreach (Cell cell in resourceCells)
-                    {
-                        // prevents spawning of plants on top of eachother 
-                        if (Vector3.Distance(p_Spawn.worldPosition, cell.worldPosition) < resourceGap)
-                        {
                             tooClose = true;
                             spawningActive = null;
                             spawn = null;
@@ -421,10 +385,6 @@ public class SpawningSystem : MonoBehaviour
             }
         }
     }
-
-
-
-    // // // // // 
 
     /// <summary>
     /// Places a plant on the Vector3 in world space

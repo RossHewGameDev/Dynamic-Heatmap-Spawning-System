@@ -70,6 +70,15 @@ public class CellMapping : MonoBehaviour
     private int c_Width, c_Height, c_Length;  // cell number in width, height, length
     private Vector3 startPoint;              // the start point of the cell map
 
+    private void Start()
+    {
+        PlantSpawnLocation.plantGroupRemoved += localSpawnableCellCheck;
+    }
+
+    private void OnDestroy()
+    {
+        PlantSpawnLocation.plantGroupRemoved -= localSpawnableCellCheck;
+    }
 
     private void Awake()
     {

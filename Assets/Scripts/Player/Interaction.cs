@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// This script is used to interact with the plants and the hive in the game.
+/// </summary>
 public class Interaction : MonoBehaviour
 {
     [SerializeField] Camera _camera;
