@@ -7683,6 +7683,26 @@ PrefabInstance:
       objectReference: {fileID: 1047929205}
     - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
         type: 3}
+      propertyPath: resourceGap
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
+        type: 3}
+      propertyPath: cellUpdateRange
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
+        type: 3}
+      propertyPath: edgePlantSpawns
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
+        type: 3}
+      propertyPath: showSpawningSystemDebug
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
+        type: 3}
       propertyPath: staticPlants.Array.data[0]
       value: 
       objectReference: {fileID: 1610220072}
@@ -7766,6 +7786,11 @@ PrefabInstance:
       propertyPath: staticPlants.Array.data[16]
       value: 
       objectReference: {fileID: 429849761}
+    - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
+        type: 3}
+      propertyPath: minExplorationBeforeSpawning
+      value: 80
+      objectReference: {fileID: 0}
     - target: {fileID: 760715811294465697, guid: eacc854d5d8b35d44b7cac0b92d97352,
         type: 3}
       propertyPath: m_Name
@@ -8395,8 +8420,23 @@ PrefabInstance:
       objectReference: {fileID: 1922824371}
     - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
         type: 3}
-      propertyPath: heatOnlySpawnableCells
+      propertyPath: showHeatMap
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
+        type: 3}
+      propertyPath: showSpawnableArea
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
+        type: 3}
+      propertyPath: showPriorityDebugging
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
+        type: 3}
+      propertyPath: heatOnlySpawnableCells
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8065074150713576775, guid: 97170849517126c4f96bc609082c35dc,
         type: 3}

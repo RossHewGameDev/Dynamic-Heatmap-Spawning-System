@@ -1,6 +1,8 @@
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor.EditorTools;
 /// <summary>
 ///Spawning System controls the spawning of  resources in the scene over time.
 /// 
@@ -9,8 +11,10 @@ using UnityEngine;
 public class SpawningSystem : MonoBehaviour
 {
 
-    public int sizeOfEdgeList; // reports size of the edgeOfVision list: Helps monitor performance of the script.
-    public int sizeOfList;    // reports size of the spawnableCellList: Helps monitor performance of the script.
+    [Tooltip("reports size of the edgeOfVision: Helps monitor performance of the script.")]
+    public int sizeOfEdgeList;
+    [Tooltip("reports size of the spawnableCellList: Helps monitor performance of the script.")]
+    public int sizeOfList; 
 
     public enum SystemTypeRunning
     {
@@ -19,16 +23,20 @@ public class SpawningSystem : MonoBehaviour
         Heatmap // enables Dynamic spawning system
     }
 
+    [SerializeField] public List<string> debugCellListQueue = new List<string>(); // for debugging purposes
+
     [SerializeField] public int minExplorationBeforeSpawning = 100; // minimum exploration required of map before spawning resources
 
     [SerializeField] public CellMapping cellMapping;
 
     [SerializeField] public int resourceNumber; // Spawning systems target resource amount
     [SerializeField] public int resourceGap;   // Spawning systems distance that it tries to spawn plants at
-
+    [SerializeField] public int edgePlantSpawns = 6; // The amount of plants that can spawn on the edge of the heatmap
     [SerializeField] public int cellUpdateRange; // The Range of cells that get updated by the spawning system in a frame
     [SerializeField] public GameObject plantPrefab;
 
+    [Header("DEBUGGING")]
+    [SerializeField] bool showSpawningSystemDebug;
     public SystemTypeRunning systemTypeRunning;
 
     public List<Cell> resourceCells = new List<Cell>();
@@ -43,12 +51,18 @@ public class SpawningSystem : MonoBehaviour
     bool spawnBounce = true;
 
     public List<Transform> staticPlants = new List<Transform>();
-
+    public List<Cell> plantsOnEdge = new List<Cell>();      // cells that contain plants on the edge of the viewed heatmap
 
     private List<Cell> cellsInExploredVision = new List<Cell>();       // cells within the viewed heatmap.
     private List<Cell> cellsOutsideExploredVision = new List<Cell>(); // cells outside the viewed heatmap.
     private List<Cell> edgeOfVision = new List<Cell>();      // cells on the edge of the viewed heatmap.
-    public List<Cell> plantsOnEdge = new List<Cell>();      // cells that contain plants on the edge of the viewed heatmap
+    public SortedSet<Cell> cellPriorityQueue = new SortedSet<Cell>(); // list of cells that are prioritised for spawning (!! Public for debugging purposes !!)
+
+
+
+    // private PriorityQueue<Cell> priorityQueue = new PriorityQueue<Cell>(); https://stackoverflow.com/questions/70568157/cant-use-c-sharp-net-6-priorityqueue-in-unity - Priority Queue is not supported in Unity. sadly.
+
+
 
     Coroutine spawningActive;
     int staticCellToSpawn = 0;
@@ -72,10 +86,6 @@ public class SpawningSystem : MonoBehaviour
         {
             sizeOfEdgeList = edgeOfVision.Count;
         }
-
-
-
-
 
         if (spawningActive == null)
         {
@@ -195,7 +205,10 @@ public class SpawningSystem : MonoBehaviour
         }
 
         yield return new WaitForEndOfFrame();
-        StopCoroutine(spawningActive);
+        if (spawningActive != null)
+        {
+            StopCoroutine(spawningActive);
+        }
     }
 
 
@@ -257,46 +270,34 @@ public class SpawningSystem : MonoBehaviour
     /// <summary>
     /// Finds a cell when Dynamic Heatmap mode is being used
     /// </summary>
-    public void GetHeatmapSpawnCell()
+    public void GetHeatmapSpawnCell()   // TODO: Create a priority list of cells to spawn on. This fixes the "oh I can't spawn here, better look again?" freezing issue.
     {
         Cell p_Spawn;
 
-
         foreach (Cell cell in cellMapping.initSpawnableCellList)
         {
-            //CELLS FOUND TO BE OUTSIDE VISION
-            if (cell.temprature < 0.1 && !cellsOutsideExploredVision.Contains(cell))
-            {
-                cellsOutsideExploredVision.Add(cell);
-            }
-            //CELLS FOUND TO BE IN VISION
-            if (cell.temprature > 0.1 && !cellsInExploredVision.Contains(cell))
-            {
-                cellsInExploredVision.Add(cell);
-                edgeOfVision.Remove(cell);
-                cellsOutsideExploredVision.Remove(cell);
-            }
-            //FOR EACH CELL WITHIN VISION
-            if (cellsInExploredVision.Contains(cell))
-            {   //FIND NEIGHBOURS THAT ARE ON THE EDGE
-                foreach (Cell neighbour in cellMapping.FindNeighbours(cell, 3))
-                {
-                    if (cellsOutsideExploredVision.Contains(neighbour) && neighbour.temprature < 0.08f && !edgeOfVision.Contains(neighbour))
-                    {
-                        edgeOfVision.Add(neighbour);
-                    }
-                    else
-                    {
-                        edgeOfVision.Remove(neighbour);
-                    }
-                }
-            }
+            cell.ClosestPlantDistance(resourceCells);
+            FindCellsInExploredVision(cell);
+            FindEdgeOfVision(cell);
+
+             // I could try and wrap my head around a min-heap implementation, but I need some time to understand it. 
+             // https://erdiizgi.com/data-structure-for-games-priority-queue-for-unity-in-c/
         }
+
+        if (cellsOutsideExploredVision.Count != 0)
+        {
+            // sort the list of cells by their priority rating
+            cellPriorityQueue = new SortedSet<Cell>(cellsOutsideExploredVision, new CellPriorityComparer());
+
+            //add just cell priority to the debug list (look! a Select! I'm learning!)  
+            debugCellListQueue = cellPriorityQueue.Select(cell => (cell.spawnPriority, cell.worldPosition).ToString()).ToList();
+        }
+
 
         // If player has not explored enough, do not start the Spawning.
         if (cellsInExploredVision.Count > minExplorationBeforeSpawning)
         {
-            if (plantsOnEdge.Count < 4 && edgeOfVision.Count != 0) // limit the amount of plants that can spawn on the edge of exploration
+            if (plantsOnEdge.Count < edgePlantSpawns && edgeOfVision.Count != 0) // limit the amount of plants that can spawn on the edge of exploration
             {
 
                 p_Spawn = edgeOfVision[Random.Range(0, edgeOfVision.Count)]; // find a cell on the edge of vision
@@ -305,27 +306,76 @@ public class SpawningSystem : MonoBehaviour
                 UpdateSpawnableList(p_Spawn);
                 plantsOnEdge.Add(p_Spawn);
                 StartCoroutine(SpawnSolver(p_Spawn));
-
-
             }
             else
             {
-                p_Spawn = cellsOutsideExploredVision[Random.Range(0, cellsOutsideExploredVision.Count)]; // find a cell that hasnt been explored yet
-                Debug.Log("Spawning outside explored area");
-                UpdateSpawnableList(p_Spawn);
-                StartCoroutine(SpawnSolver(p_Spawn));
+                if (cellPriorityQueue.Count != 0)
+                {
+                    p_Spawn = cellPriorityQueue.Min; // find the cell with the highest priority in the spawnable list
+                    Debug.Log("Spawning outside explored area... highest priority cell: " + p_Spawn.spawnPriority);
+                    UpdateSpawnableList(p_Spawn);
+                    StartCoroutine(SpawnSolver(p_Spawn));
+                }
+                else
+                {
+                    p_Spawn = cellsOutsideExploredVision[Random.Range(0, cellsOutsideExploredVision.Count)]; // try to find a random cell that hasnt been explored yet
+                    UpdateSpawnableList(p_Spawn);
+                    StartCoroutine(SpawnSolver(p_Spawn));
+                }
             }
         }
         else if (cellMapping.spawnableCellList.Count != 0)
         {
             p_Spawn = cellMapping.spawnableCellList[Random.Range(0, cellMapping.spawnableCellList.Count)]; // find a random cell that is in the spawnable list
+
             UpdateSpawnableList(p_Spawn);
             StartCoroutine(SpawnSolver(p_Spawn));
-
         }
         else
         {
             spawningActive = null;
+        }
+    }
+
+    /// <summary>
+    /// Checks if the cell is outside or inside the heatmap.
+    /// </summary>
+    private void FindCellsInExploredVision(Cell cell)
+    {
+        //CELLS FOUND TO BE OUTSIDE VISION
+        if (cell.temprature < 0.1 && !cellsOutsideExploredVision.Contains(cell))
+        {
+            cellsOutsideExploredVision.Add(cell);
+        }
+        //CELLS FOUND TO BE IN VISION
+        if (cell.temprature > 0.1 && !cellsInExploredVision.Contains(cell))
+        {
+            cellsInExploredVision.Add(cell);
+            edgeOfVision.Remove(cell);
+            cellsOutsideExploredVision.Remove(cell);
+        }
+    }
+
+
+    /// <summary>
+    /// Finds the neighbours of the cell and checks if they are on the edge of the vision.
+    /// </summary>
+    private void FindEdgeOfVision(Cell cell)
+    {
+        //FOR EACH CELL WITHIN VISION
+        if (cellsInExploredVision.Contains(cell))
+        {   //FIND NEIGHBOURS THAT ARE ON THE EDGE
+            foreach (Cell neighbour in cellMapping.FindNeighbours(cell, 3))
+            {
+                if (cellsOutsideExploredVision.Contains(neighbour) && neighbour.temprature < 0.08f && !edgeOfVision.Contains(neighbour))
+                {
+                    edgeOfVision.Add(neighbour);
+                }
+                else
+                {
+                    edgeOfVision.Remove(neighbour);
+                }
+            }
         }
     }
 
@@ -425,7 +475,7 @@ public class SpawningSystem : MonoBehaviour
 /// </summary>
     private void OnDrawGizmos()
     {
-    if (cellMapping != null && resourceCells.Count > 1)
+    if (cellMapping != null && resourceCells.Count > 1 && showSpawningSystemDebug)
         {
             foreach (Cell cell in resourceCells) // cells with plants on are made yellow cubes.
             {

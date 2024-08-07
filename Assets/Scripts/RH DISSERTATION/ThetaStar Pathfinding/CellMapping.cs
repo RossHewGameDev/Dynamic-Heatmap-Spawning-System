@@ -55,13 +55,13 @@ public class CellMapping : MonoBehaviour
     [Header("Debugging")]
     [SerializeField] bool heatOnlySpawnableCells;
     [SerializeField] bool showSpawnableArea; 
+    [SerializeField] bool showHeatMap; // show the heat map of the cells in the cellmap
+    [SerializeField] bool showPriorityDebugging; // show the priority of the cells in the cellmap
 
     [HideInInspector]public List<Cell> path; // the path that has been generated (inserted in here so we can debug it and see the gizmos draw the path)
 
     private bool globalheatChkRunning;        
-    private bool localheatChkRunning; 
     private Coroutine globalTempratureUpdate; 
-    private Coroutine localTemperatureUpdate; 
 
     float cellsExplored; // the number of cells that have been explored
     float explorationValue; // the % of cells in the map that have been explored
@@ -103,6 +103,12 @@ public class CellMapping : MonoBehaviour
         }
 
         // TODO: redo local heat check
+
+
+        if (showPriorityDebugging)
+        {
+            CellPriorityCheck(); // check the priority of the cells in the cellmap
+        }
     }
 
 
@@ -252,7 +258,7 @@ public class CellMapping : MonoBehaviour
 
         foreach (Cell cell in cellMap)
         {
-            // if we dont care about seeing non-spawnable cells heat up, skip them (this clears nice visuals for debugging)
+            // if we dont care about seeing non-spawnable cells heat up, skip them.
             if (!initSpawnableCellHashSet.Contains(cell) && heatOnlySpawnableCells) 
             {
                 continue;        // with hashset filtering, we get 150~ fps on default map compared to 50~ fps without.
@@ -279,20 +285,28 @@ public class CellMapping : MonoBehaviour
     /// </summary>
     private void HeatCell(float hotAlphaLimiter, Cell cell)
     {
-        if (cell.temprature < 1)
-        {
+        if (cell.temprature < 1) // TODO: replace this limiter with a clamp on the variable itself... why didn't i do this?
+        { 
             cell.temprature += heatSpeed;
         }
 
-        // If the cell is "over" hot, set the alpha to the hotAlphaLimiter
+        // If the cell is "over" hot, set the alpha to the hotAlphaLimiter 
         if (cell.temprature > hotAlphaLimiter)
         {
-            cell.colour = new Color(cell.temprature, 0, -cell.temprature, hotAlphaLimiter);
+            if (showHeatMap)
+            {
+                cell.colour = new Color(cell.temprature, 0, -cell.temprature, hotAlphaLimiter);
+            }
+            
         }
         else // else set the alpha to the reprasentative temprature
         {
+            if (showHeatMap)
+            {
             cell.colour = new Color(cell.temprature, 0, -cell.temprature, cell.temprature);
+            }
         }
+        
     }
 
     /// <summary>
@@ -304,16 +318,43 @@ public class CellMapping : MonoBehaviour
         if (cell.temprature > 0 && cell.temprature < heatNoiseGate)
         {
             cell.temprature -= coolSpeed;
+
             if (cell.temprature < alphaLimiter)
             {
-                cell.colour = new Color(cell.temprature, 0, Mathf.Lerp(-cell.temprature, cell.temprature, 0.01f), alphaLimiter);
+                if (showHeatMap)
+                {
+                    cell.colour = new Color(cell.temprature, 0, Mathf.Lerp(-cell.temprature, cell.temprature, 0.01f), alphaLimiter);
+                }
+                
             }
             else
             {
+                if (showHeatMap)
+                {
                 cell.colour = new Color(cell.temprature, 0, Mathf.Lerp(-cell.temprature, cell.temprature, 0.01f), cell.temprature);
+                }
             }
         }
     }
+
+    private void CellPriorityCheck()
+    {
+        foreach (Cell cell in spawnableCellList)
+        {
+            if (!initSpawnableCellHashSet.Contains(cell)) 
+            {
+                continue;        // with hashset filtering, we get 150~ fps on default map compared to 50~ fps without.
+            }
+
+            // colour cells based on their priority. Green - high priority, Red - low priority
+            if (showPriorityDebugging)
+            {
+                cell.colour = Color.Lerp(Color.blue, Color.green, cell.spawnPriority * 0.008f);
+                
+            }
+
+        }
+    }   
     
     /// <summary>
     /// A check for the save system to grab the exploration value %.
@@ -418,9 +459,9 @@ public class CellMapping : MonoBehaviour
                     }
                     else
                     {
-                        if (currentCell.temprature > 0)
+                        if (showPriorityDebugging || showHeatMap && currentCell.temprature > 0) // shows the priority of the cells in the cellmap
                         {
-                            Gizmos.color = currentCell.colour; /// section has been edited to work with temprature for the dissertation
+                            Gizmos.color = currentCell.colour;
                             Gizmos.DrawCube(currentCell.worldPosition, new Vector3(cellDiameter, cellDiameter, cellDiameter));
                         }
                     }
