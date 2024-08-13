@@ -5,10 +5,7 @@ using UnityEngine;
 
 
 /// THIS SCRIPT HAS BEEN MODIFIED FROM MY COMP250 ARTEFACT TO ACT AS AN ELEMENT IN MY DISSERTATION.
-/// Edited lines have been pointed out in comments and brand new functions will also be clearly labelled 
-/// 
-/// 
-/// 
+/// Edited lines have been pointed out in comments and brand new functions will also be clearly labelled.
 /// GIT LOG WILL SHOW CHANGES AT https://github.falmouth.ac.uk/Games-Academy-Student-Work-22-23/RH*****8-Dissertation/commits/main *** OLD ***
 
 
@@ -17,6 +14,12 @@ using UnityEngine;
 /// https://theory.stanford.edu/~amitp/GameProgramming/ (Help for understanding A* and good refrence for imlementation) 
 /// https://youtu.be/-L-WgKMFuhE (Sebastian Lague's A* series was useful refrence for the basic layout in Unity)
 /// https://johntgz.github.io/2020/08/31/theta_star/#enter-the-theta (Help for understanding A* and good refrence for imlementation) 
+/// 
+
+// TODO: Look into Iterator Pattern for the CellMapping class. This could be used to iterate over the cells in the cellmap. 
+// would allow traversal of the grid in various ways without exposing the underlying structure of the cellmap.
+
+// TODO: implement flyweight pattern for the cellmap. Idle cells within walls and other untraversable areas could be stored in a flyweight object and ignored when iterating over the cellmap.
 
 /// <summary>
 /// Generates the cell map which is used by the Theta Star Algorithm to find untraversable areas to pathfind around.

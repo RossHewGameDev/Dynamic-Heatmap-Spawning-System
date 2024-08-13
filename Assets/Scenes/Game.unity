@@ -7673,6 +7673,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
         type: 3}
+      propertyPath: edgeWidth
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 760715811294465696, guid: eacc854d5d8b35d44b7cac0b92d97352,
+        type: 3}
       propertyPath: cellMapping
       value: 
       objectReference: {fileID: 511601135}
@@ -8420,13 +8425,28 @@ PrefabInstance:
       objectReference: {fileID: 1922824371}
     - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
         type: 3}
+      propertyPath: coolSpeed
+      value: 0.002
+      objectReference: {fileID: 0}
+    - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
+        type: 3}
+      propertyPath: heatSpeed
+      value: 0.02
+      objectReference: {fileID: 0}
+    - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
+        type: 3}
       propertyPath: showHeatMap
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
         type: 3}
+      propertyPath: heatNoiseGate
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
+        type: 3}
       propertyPath: showSpawnableArea
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
         type: 3}
@@ -8436,7 +8456,12 @@ PrefabInstance:
     - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
         type: 3}
       propertyPath: heatOnlySpawnableCells
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8065074150713576774, guid: 97170849517126c4f96bc609082c35dc,
+        type: 3}
+      propertyPath: neighbourCheckDistance
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 8065074150713576775, guid: 97170849517126c4f96bc609082c35dc,
         type: 3}

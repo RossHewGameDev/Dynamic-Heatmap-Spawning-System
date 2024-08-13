@@ -16,6 +16,9 @@ public class SpawningSystem : MonoBehaviour
     [Tooltip("reports size of the spawnableCellList: Helps monitor performance of the script.")]
     public int sizeOfList; 
 
+
+
+    // Strategy Pattern for the different spawning systems. changes the behaviour of the spawning system.
     public enum SystemTypeRunning
     {
         Static,   // enables Static spawning system
@@ -32,6 +35,7 @@ public class SpawningSystem : MonoBehaviour
     [SerializeField] public int resourceNumber; // Spawning systems target resource amount
     [SerializeField] public int resourceGap;   // Spawning systems distance that it tries to spawn plants at
     [SerializeField] public int edgePlantSpawns = 6; // The amount of plants that can spawn on the edge of the heatmap
+    [SerializeField] public int edgeWidth = 1; // The width of the edge of the heatmap
     [SerializeField] public int cellUpdateRange; // The Range of cells that get updated by the spawning system in a frame
     [SerializeField] public GameObject plantPrefab;
 
@@ -300,9 +304,8 @@ public class SpawningSystem : MonoBehaviour
             if (plantsOnEdge.Count < edgePlantSpawns && edgeOfVision.Count != 0) // limit the amount of plants that can spawn on the edge of exploration
             {
 
-                p_Spawn = edgeOfVision[Random.Range(0, edgeOfVision.Count)]; // find a cell on the edge of vision
-                Debug.LogWarning("Spawning on edge");
-
+                p_Spawn = cellPriorityQueue.Min; // find a cell on the edge of vision
+                Debug.LogWarning("Spawning on edge... highest priority cell: " + p_Spawn.spawnPriority + " scores are temp: " + p_Spawn.temprature + " and distance:" + p_Spawn.closestPlantDistance);
                 UpdateSpawnableList(p_Spawn);
                 plantsOnEdge.Add(p_Spawn);
                 StartCoroutine(SpawnSolver(p_Spawn));
@@ -312,13 +315,7 @@ public class SpawningSystem : MonoBehaviour
                 if (cellPriorityQueue.Count != 0)
                 {
                     p_Spawn = cellPriorityQueue.Min; // find the cell with the highest priority in the spawnable list
-                    Debug.Log("Spawning outside explored area... highest priority cell: " + p_Spawn.spawnPriority);
-                    UpdateSpawnableList(p_Spawn);
-                    StartCoroutine(SpawnSolver(p_Spawn));
-                }
-                else
-                {
-                    p_Spawn = cellsOutsideExploredVision[Random.Range(0, cellsOutsideExploredVision.Count)]; // try to find a random cell that hasnt been explored yet
+                    Debug.Log("Spawning outside explored area... highest priority cell: " + p_Spawn.spawnPriority + " scores are temp:" + p_Spawn.temprature + " and distance: " + p_Spawn.closestPlantDistance);
                     UpdateSpawnableList(p_Spawn);
                     StartCoroutine(SpawnSolver(p_Spawn));
                 }
@@ -365,15 +362,18 @@ public class SpawningSystem : MonoBehaviour
         //FOR EACH CELL WITHIN VISION
         if (cellsInExploredVision.Contains(cell))
         {   //FIND NEIGHBOURS THAT ARE ON THE EDGE
-            foreach (Cell neighbour in cellMapping.FindNeighbours(cell, 3))
+            foreach (Cell neighbour in cellMapping.FindNeighbours(cell, edgeWidth))
             {
-                if (cellsOutsideExploredVision.Contains(neighbour) && neighbour.temprature < 0.08f && !edgeOfVision.Contains(neighbour))
+                // if the neighbour is outside of the vision and the temprature is low, add it to the edge of vision list
+                if (cellsOutsideExploredVision.Contains(neighbour) && neighbour.temprature < 0.2f && !edgeOfVision.Contains(neighbour))
                 {
                     edgeOfVision.Add(neighbour);
+                    neighbour.isEdgeCell = true;
                 }
                 else
                 {
                     edgeOfVision.Remove(neighbour);
+                    neighbour.isEdgeCell = false;
                 }
             }
         }
@@ -457,8 +457,10 @@ public class SpawningSystem : MonoBehaviour
             // temp
             edgeOfVision.Remove(cell);
             cellsOutsideExploredVision.Remove(cell);
-            // temp
-            cellMapping.spawnableCellList.Remove(cell);
+         
+         
+            // // temp
+            // cellMapping.spawnableCellList.Remove(cell);
         }
         p_Spawn.spawnable = false;
         cellMapping.spawnableCellList.Remove(p_Spawn);
@@ -489,10 +491,19 @@ public class SpawningSystem : MonoBehaviour
                 Gizmos.DrawWireCube(cell.worldPosition, new Vector3(1f, 1f, 1f));
             }
 
+            // foreach (Cell cell in edgeOfVision) // Colour cells on the edge of the vision yellow
+            // {
+            //     Gizmos.color = Color.yellow;
+            //     Gizmos.DrawWireCube(cell.worldPosition, new Vector3(1.5f, 1.5f, 1.5f));
+            // }
+
             foreach (Cell cell in edgeOfVision) // Colour cells on the edge of the vision yellow
             {
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawWireCube(cell.worldPosition, new Vector3(1.5f, 1.5f, 1.5f));
+                if (cell.isEdgeCell)
+                {
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawWireCube(cell.worldPosition, new Vector3(1.5f, 1.5f, 1.5f));
+                }
             }
         }
     }

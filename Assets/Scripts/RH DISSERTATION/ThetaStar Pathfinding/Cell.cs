@@ -6,11 +6,7 @@ using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
 
 
-/// Resources read and watched (seperate from Academic refrences):  
-/// https://news.movel.ai/theta-star/ (A valuable guide for introducing Theta* elements)
-/// https://theory.stanford.edu/~amitp/GameProgramming/ (Help for understanding A* and good refrence for imlementation) 
-/// https://youtu.be/-L-WgKMFuhE (Sebastian Lague's A* series was useful refrence for the basic layout in Unity)
-/// https://johntgz.github.io/2020/08/31/theta_star/#enter-the-theta (Help for understanding A* and good refrence for imlementation) 
+// TODO: Implement Composite Pattern for Cell Clusters. Groups of cells can then be treated as a single entity when an area is not traversable.
 
 /// <summary>
 /// Properties of the Cell Objects that populate the cell map
@@ -60,7 +56,7 @@ public class Cell
     private float _closestPlantDistance;
 
     /// <summary>
-    /// Constructor for the Cell object 
+    /// Constructor for the Cell object. 
     /// </summary>
     /// <param name="_traversable"></param>
     /// <param name="_worldPosition"></param>
@@ -79,13 +75,18 @@ public class Cell
         spawnable = _spawnable;              // Spawnable has been added for the heatmap
 
 
+        DebugPrioritySystem();
+
+    }
+
+    private void DebugPrioritySystem()
+    {
         // Debugging for the priority system
         if (gridX == 20 && gridY == 5 && gridZ == 20)
         {
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.transform.position = worldPosition;
         }
-
     }
 
 

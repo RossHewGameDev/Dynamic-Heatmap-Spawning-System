@@ -24,6 +24,8 @@ public class PlantSpawnLocation : MonoBehaviour
     public delegate void PlantGroupRemoved(List<Cell> originCell);
     public static PlantGroupRemoved plantGroupRemoved;
 
+    private int addCellsBackRange = 2;
+
 
     private void Start()
     {
@@ -71,12 +73,14 @@ public class PlantSpawnLocation : MonoBehaviour
         yield return new WaitForSeconds(addCellsBackTimer);
 
         // Check if the cell is traversable and if it is in the spawn layer
-        foreach (Cell cell in cellMapping.FindNeighbours(originCell, 6))
+        foreach (Cell cell in cellMapping.FindNeighbours(originCell, addCellsBackRange))
         {
             if (cell.traversable && Physics.CheckSphere(cell.worldPosition, 1, spawnLayer))
             {
-                cell.spawnable = !Physics.CheckSphere(cell.worldPosition, 5, untraversableMask);
-                cellMapping.spawnableCellList.Add(cell);
+                // Check if the cell is not in the untraversable mask
+                cell.spawnable = !Physics.CheckSphere(cell.worldPosition, addCellsBackRange-1, untraversableMask);
+
+                cellMapping.spawnableCellList.Add(cell); // TODO: make a safer access method
             }
             else
             {
@@ -90,7 +94,7 @@ public class PlantSpawnLocation : MonoBehaviour
 
         // cellMapping.localSpawnableCellCheck(cellMapping.FindNeighbours(originCell,6)); // why isnt this an event? make it an observer pattern!
 
-        plantGroupRemoved(cellMapping.FindNeighbours(originCell,6)); // invoke event to inform the spawning system that the plant group has been removed and local cells need updating
+        plantGroupRemoved(cellMapping.FindNeighbours(originCell,addCellsBackRange)); // invoke event to inform the spawning system that the plant group has been removed and local cells need updating
 
         Destroy(gameObject); // having it destroy at the end of the wait
     }
